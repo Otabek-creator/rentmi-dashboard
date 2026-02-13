@@ -168,10 +168,18 @@ def get_scalar(query, default=0):
 
 def metric_card(icon, value, label):
     """Chiroyli metrika kartochkasi"""
+    if isinstance(value, str):
+        formatted_value = value
+    else:
+        try:
+            formatted_value = f"{value:,}"
+        except ValueError:
+            formatted_value = str(value)
+
     st.markdown(f"""
     <div class="metric-card">
         <div class="metric-icon">{icon}</div>
-        <div class="metric-value">{value:,}</div>
+        <div class="metric-value">{formatted_value}</div>
         <div class="metric-label">{label}</div>
     </div>
     """, unsafe_allow_html=True)
