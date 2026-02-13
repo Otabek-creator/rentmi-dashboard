@@ -8,7 +8,7 @@ import os
 import firebase_admin
 from firebase_admin import credentials
 
-from config import FIREBASE_CREDENTIALS_PATH
+from config import FIREBASE_CREDENTIALS_PATH, FIREBASE_CREDENTIALS
 
 
 def initialize_firebase():
@@ -16,16 +16,28 @@ def initialize_firebase():
     if firebase_admin._apps:
         return firebase_admin.get_app()
 
-    cred_path = os.path.abspath(FIREBASE_CREDENTIALS_PATH)
+    try:
+        if FIREBASE_CREDENTIALS:
+            # Streamlit Secrets dan olingan dict
+            cred = credentials.Certificate(FIREBASE_CREDENTIALS)
+            app = firebase_admin.initialize_app(cred)
+            print(f"✅ Firebase initialized (from secrets): {app.project_id}")
+            return app
+        else:
+             # Local fayldan o'qish
+            cred_path = os.path.abspath(FIREBASE_CREDENTIALS_PATH)
+            if not os.path.exists(cred_path):
+                print(f"⚠️  Firebase credentials topilmadi: {cred_path}")
+                return None
 
-    if not os.path.exists(cred_path):
-        print(f"⚠️  Firebase credentials topilmadi: {cred_path}")
+            cred = credentials.Certificate(cred_path)
+            app = firebase_admin.initialize_app(cred)
+            print(f"✅ Firebase initialized (from file): {app.project_id}")
+            return app
+
+    except Exception as e:
+        print(f"❌ Firebase init error: {e}")
         return None
-
-    cred = credentials.Certificate(cred_path)
-    app = firebase_admin.initialize_app(cred)
-    print(f"✅ Firebase initialized: {app.project_id}")
-    return app
 
 
 def get_firebase_project_info():

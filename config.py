@@ -1,25 +1,37 @@
 import os
+import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Local PostgreSQL
-DB_CONFIG = {
-    "dbname": os.getenv("DB_NAME", "rentme_analytics"),
-    "user": os.getenv("DB_USER", "postgres"),
-    "password": os.getenv("DB_PASSWORD", "12345"),
-    "host": os.getenv("DB_HOST", "127.0.0.1"),
-    "port": os.getenv("DB_PORT", "5432"),
-}
+# Database Configuration
+# Streamlit Cloud da st.secrets ishlatiladi, localda esa .env
+if "postgres" in st.secrets:
+    DB_CONFIG = st.secrets["postgres"]
+else:
+    DB_CONFIG = {
+        "dbname": os.getenv("DB_NAME", "rentme_analytics"),
+        "user": os.getenv("DB_USER", "postgres"),
+        "password": os.getenv("DB_PASSWORD", "12345"),
+        "host": os.getenv("DB_HOST", "127.0.0.1"),
+        "port": os.getenv("DB_PORT", "5432"),
+    }
 
 # Firebase credentials
-FIREBASE_CREDENTIALS_PATH = os.getenv(
-    "FIREBASE_CREDENTIALS_PATH",
-    "../backend/apps/notification/data/firebase-adminsdk.json"
-)
+# Streamlit Cloud da st.secrets["firebase"] ishlatiladi
+if "firebase" in st.secrets:
+    FIREBASE_CREDENTIALS = dict(st.secrets["firebase"])
+    FIREBASE_CREDENTIALS_PATH = None # Fayl yo'li kerak emas
+else:
+    FIREBASE_CREDENTIALS = None
+    FIREBASE_CREDENTIALS_PATH = os.getenv(
+        "FIREBASE_CREDENTIALS_PATH",
+        "../backend/apps/notification/data/firebase-adminsdk.json" # Local path
+    )
 
 # SQLAlchemy connection string (agar kerak bo'lsa)
 DATABASE_URL = (
     f"postgresql://{DB_CONFIG['user']}:{DB_CONFIG['password']}"
     f"@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['dbname']}"
 )
+
