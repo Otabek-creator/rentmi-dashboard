@@ -234,7 +234,11 @@ with st.sidebar:
     )
 
     st.markdown("---")
+<<<<<<< HEAD
     st.markdown("### 🛠️ Admin Panel")
+=======
+        st.markdown("### 🛠️ Admin Panel")
+>>>>>>> bc10c11aeade115c2e585bfb35a1b4caf90e4c59
     if st.button("🔄 Bazani yangilash (Jadvallar)"):
         with st.spinner("Jadvallar yaratilmoqda..."):
             try:
