@@ -4,6 +4,8 @@ Streamlit yordamida qurilgan analitik panel
 """
 
 # Force reload
+# Streamlit yordamida qurilgan analitik panel
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
