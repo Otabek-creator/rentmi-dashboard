@@ -234,6 +234,26 @@ with st.sidebar:
     )
 
     st.markdown("---")
+    st.markdown("### 🛠️ Admin Panel")
+    if st.button("🔄 Bazani yangilash (Jadvallar)"):
+        with st.spinner("Jadvallar yaratilmoqda..."):
+            try:
+                create_tables()
+                st.success("✅ Jadvallar muvaffaqiyatli yaratildi!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Xatolik: {e}")
+
+    if st.button("🎲 Demo ma'lumot qo'shish"):
+        with st.spinner("Demo ma'lumotlar qo'shilmoqda..."):
+            try:
+                from database import seed_demo_data
+                seed_demo_data()
+                st.success("✅ Demo ma'lumotlar qo'shildi!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Xatolik: {e}")
+
     st.markdown(f"📅 **{datetime.now().strftime('%Y-%m-%d %H:%M')}**")
 
 
