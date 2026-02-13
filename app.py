@@ -231,6 +231,7 @@ with st.sidebar:
             "📋 Arizalar va Shartnomalar",
             "🔔 Xabarlar",
             "🔥 Firebase",
+            "📊 App Analytics",
         ],
         index=0,
     )
@@ -811,7 +812,7 @@ elif page == "🔔 Xabarlar":
     st.plotly_chart(fig, use_container_width=True)
 
 
-# ==================== 7. FIREBASE ====================
+    # ==================== 7. FIREBASE ====================
 elif page == "🔥 Firebase":
 
     section_header("🔥 Firebase Integration")
@@ -849,6 +850,96 @@ elif page == "🔥 Firebase":
             <span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">Faol</span>
         </div>
         """, unsafe_allow_html=True)
+
+
+# ==================== 8. APP ANALYTICS (GA4) ====================
+elif page == "📊 App Analytics":
+    from analytics_service import get_ga4_data, get_top_pages, get_demo_analytics_data, get_demo_top_pages
+    
+    section_header("📊 Mobil Ilova Analitikasi (Google Analytics 4)")
+    
+    # 1. Konfiguratsiya tekshiruvi
+    GA_PROPERTY_ID = None
+    if "firebase" in st.secrets and "property_id" in st.secrets["firebase"]:
+        GA_PROPERTY_ID = st.secrets["firebase"]["property_id"]
+    
+    # Ma'lumot olish (Real yoki Demo)
+    is_demo = False
+    if GA_PROPERTY_ID:
+        df_trend = get_ga4_data(GA_PROPERTY_ID)
+        df_pages = get_top_pages(GA_PROPERTY_ID)
+        if df_trend is None:
+            st.warning("⚠️ GA4 API ga ulanib bo'lmadi. Demo rejimga o'tilmoqda.")
+            is_demo = True
+            df_trend = get_demo_analytics_data()
+            df_pages = get_demo_top_pages()
+    else:
+        st.info("ℹ️ GA4 Property ID topilmadi. Demo ma'lumotlar ko'rsatilmoqda.")
+        is_demo = True
+        df_trend = get_demo_analytics_data()
+        df_pages = get_demo_top_pages()
+
+    if is_demo:
+        st.markdown("""
+        <div class="demo-box">
+            <b>⚠️ DEMO MODE</b>: Bu ma'lumotlar sun'iy generatsiya qilingan. 
+            Real ma'lumotlarni ulash uchun secrets ga <code>property_id</code> qo'shing.
+        </div>
+        """, unsafe_allow_html=True)
+
+    # 2. Asosiy ko'rsatkichlar (KPIs)
+    if not df_trend.empty:
+        # Oxirgi kun va oldingi kun farqi (taxminiy)
+        latest = df_trend.iloc[-1]
+        
+        # O'rtacha sessiya vaqti (daqiqada)
+        avg_session_min = latest["duration"] / latest["users"] / 60 if latest["users"] > 0 else 0
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            metric_card("👥", int(latest["users"]), "Faol Foydalanuvchilar (Bugun)")
+        with col2:
+            metric_card("⏱️", f"{avg_session_min:.1f} daq", "O'rtacha foydalanish vaqti")
+        with col3:
+            metric_card("👀", int(latest["views"]), "Sahifa ko'rishlar soni")
+
+        st.markdown("---")
+
+        # 3. Grafiklar
+        col_left, col_right = st.columns(2)
+        
+        with col_left:
+            section_header("📈 Foydalanish vaqti trendi (30 kun)")
+            # Har bir userga o'rtacha vaqtni hisoblash uchun
+            df_trend["avg_duration_min"] = df_trend["duration"] / df_trend["users"] / 60
+            
+            fig = px.area(df_trend, x="date", y="avg_duration_min",
+                         labels={"date": "Sana", "avg_duration_min": "Daqiqa"},
+                         color_discrete_sequence=["#10b981"])
+            fig.update_layout(height=350, plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig, use_container_width=True)
+            
+        with col_right:
+            section_header("📱 Eng ko'p kirilgan sahifalar")
+            if not df_pages.empty:
+                # Rename columns for display
+                df_pages.columns = ["Sahifa nomi", "Ko'rishlar"]
+                st.dataframe(
+                    df_pages, 
+                    use_container_width=True, 
+                    hide_index=True,
+                    column_config={
+                        "Ko'rishlar": st.column_config.ProgressColumn(
+                            "Ko'rishlar",
+                            format="%d",
+                            min_value=0,
+                            max_value=int(df_pages["Ko'rishlar"].max()),
+                        ),
+                    }
+                )
+            else:
+                st.info("Sahifa ma'lumotlari mavjud emas")
+
 
     with col2:
         st.markdown("""
