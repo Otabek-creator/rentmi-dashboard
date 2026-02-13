@@ -6,9 +6,18 @@ load_dotenv()
 
 # Database Configuration
 # Streamlit Cloud da st.secrets ishlatiladi, localda esa .env
-if "postgres" in st.secrets:
-    DB_CONFIG = st.secrets["postgres"]
-else:
+try:
+    if "postgres" in st.secrets:
+        DB_CONFIG = dict(st.secrets["postgres"])
+        # Neon.tech uchun SSL talab qilinishi mumkin
+        if "sslmode" not in DB_CONFIG:
+            DB_CONFIG["sslmode"] = "require"
+    else:
+        # Debugging: Agar secrets o'qilmasa, nimaga o'qilmayotganini bilish uchun
+        print(f"⚠️ 'postgres' section not found in st.secrets. Available keys: {list(st.secrets.keys())}")
+        raise KeyError("'postgres' not found")
+except (FileNotFoundError, KeyError):
+    # Fallback to local
     DB_CONFIG = {
         "dbname": os.getenv("DB_NAME", "rentme_analytics"),
         "user": os.getenv("DB_USER", "postgres"),
