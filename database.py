@@ -7,9 +7,8 @@ database.py — PostgreSQL ulanish va jadval yaratish (Optimized)
 
 import pandas as pd
 import psycopg2
-from psycopg2 import pool
+import psycopg2.pool
 import streamlit as st
-from contextlib import contextmanager
 
 from config import DB_CONFIG
 
@@ -20,7 +19,7 @@ from config import DB_CONFIG
 def _get_pool():
     """Connection pool yaratish (bir marta, keyin keshlanadi)"""
     try:
-        return pool.SimpleConnectionPool(
+        return psycopg2.pool.SimpleConnectionPool(
             minconn=1,
             maxconn=5,
             **DB_CONFIG
@@ -30,48 +29,64 @@ def _get_pool():
         return None
 
 
-@contextmanager
-def get_connection():
-    """Pool dan connection olish va avtomatik qaytarish"""
+def _get_conn():
+    """Pool dan connection olish"""
     db_pool = _get_pool()
     if db_pool is None:
-        raise ConnectionError("Database pool mavjud emas")
+        return psycopg2.connect(**DB_CONFIG)
+    return db_pool.getconn()
 
-    conn = db_pool.getconn()
-    try:
-        yield conn
-    finally:
-        db_pool.putconn(conn)
+
+def _put_conn(conn):
+    """Connection ni pool ga qaytarish"""
+    db_pool = _get_pool()
+    if db_pool is not None:
+        try:
+            db_pool.putconn(conn)
+        except Exception:
+            try:
+                conn.close()
+            except Exception:
+                pass
+    else:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 
 # ======================== QUERY EXECUTION ========================
 
 @st.cache_data(ttl=300, show_spinner=False)
-def execute_query(query, params=None):
+def execute_query(_query, _params=None):
     """
     Cached SELECT so'rov — DataFrame qaytaradi.
     5 daqiqa keshlanadi (ttl=300).
     """
-    with get_connection() as conn:
-        try:
-            df = pd.read_sql_query(query, conn, params=params)
-            return df
-        except Exception as e:
-            st.error(f"❌ So'rov xatosi: {e}")
-            return pd.DataFrame()
+    conn = _get_conn()
+    try:
+        df = pd.read_sql_query(_query, conn, params=_params)
+        return df
+    except Exception as e:
+        st.error(f"❌ So'rov xatosi: {e}")
+        return pd.DataFrame()
+    finally:
+        _put_conn(conn)
 
 
 def execute_write(query, params=None):
     """INSERT/UPDATE/CREATE so'rov bajarish (keshlanmaydi)"""
-    with get_connection() as conn:
-        try:
-            cur = conn.cursor()
-            cur.execute(query, params)
-            conn.commit()
-            cur.close()
-        except Exception as e:
-            conn.rollback()
-            raise e
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(query, params)
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        _put_conn(conn)
 
 
 def clear_cache():
@@ -87,7 +102,8 @@ def create_tables():
     Bu jadvallar asl bazadagi jadvallarning soddalashtirilgan versiyasi —
     faqat analitika uchun kerakli ustunlar.
     """
-    with get_connection() as conn:
+    conn = _get_conn()
+    try:
         cur = conn.cursor()
 
         cur.execute("""
@@ -234,6 +250,8 @@ def create_tables():
 
         conn.commit()
         cur.close()
+    finally:
+        _put_conn(conn)
     print("✅ Barcha jadvallar yaratildi (PostgreSQL)!")
 
 
@@ -247,7 +265,8 @@ def seed_demo_data():
     import json
     from datetime import datetime, timedelta
 
-    with get_connection() as conn:
+    conn = _get_conn()
+    try:
         cur = conn.cursor()
 
         # Mavjud ma'lumot borligini tekshirish
@@ -448,7 +467,9 @@ def seed_demo_data():
 
         conn.commit()
         cur.close()
-    
+    finally:
+        _put_conn(conn)
+
     # Keshni tozalash (yangi data ko'rinishi uchun)
     clear_cache()
     print("✅ Demo ma'lumotlar muvaffaqiyatli yaratildi!")
