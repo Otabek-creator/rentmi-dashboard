@@ -1,30 +1,30 @@
 """
-firebase_service.py — Firebase Admin SDK orqali ma'lumot olish
+firebase_service.py — Firebase Admin SDK orqali ma'lumot olish (Optimized)
 
-Firebase loyihasidan FCM va boshqa statistikalarni olish.
+✅ @st.cache_resource — Firebase bir marta initializatsiya qilinadi
 """
 
 import os
 import firebase_admin
 from firebase_admin import credentials
+import streamlit as st
 
 from config import FIREBASE_CREDENTIALS_PATH, FIREBASE_CREDENTIALS
 
 
+@st.cache_resource
 def initialize_firebase():
-    """Firebase Admin SDK ni ishga tushirish"""
+    """Firebase Admin SDK ni ishga tushirish (cached)"""
     if firebase_admin._apps:
         return firebase_admin.get_app()
 
     try:
         if FIREBASE_CREDENTIALS:
-            # Streamlit Secrets dan olingan dict
             cred = credentials.Certificate(FIREBASE_CREDENTIALS)
             app = firebase_admin.initialize_app(cred)
             print(f"✅ Firebase initialized (from secrets): {app.project_id}")
             return app
         else:
-             # Local fayldan o'qish
             cred_path = os.path.abspath(FIREBASE_CREDENTIALS_PATH)
             if not os.path.exists(cred_path):
                 print(f"⚠️  Firebase credentials topilmadi: {cred_path}")
@@ -40,8 +40,9 @@ def initialize_firebase():
         return None
 
 
+@st.cache_data(ttl=600)
 def get_firebase_project_info():
-    """Firebase loyiha ma'lumotlari"""
+    """Firebase loyiha ma'lumotlari (10 daqiqa cached)"""
     app = initialize_firebase()
     if not app:
         return {
