@@ -92,12 +92,14 @@ def execute_sql_dump(cur, filename):
 
         # 3. Psql maxsus komandalari (\connect, \restrict va h.k)
         if stripped.startswith('\\') and not in_copy_mode:
-            # Ignor qilish
-            # print(f"   ⏩ Psql command ignored: {stripped[:20]}...")
             continue
 
-        # 4. Oddiy SQL (yig'ib boramiz)
-        # Izohlar va bo'sh qatorlarni o'tkazib yubormaymiz, chunki ular SQL ichida bo'lishi mumkin
+        # 4. Role/Ownership komandalarini filtrlash (Neon.tech da 'postgres' roli yo'q bo'lishi mumkin)
+        if "OWNER TO" in stripped or stripped.startswith("GRANT") or stripped.startswith("REVOKE"):
+            # print(f"   ⏩ Role command ignored: {stripped[:40]}...")
+            continue
+        
+        # 5. Oddiy SQL (yig'ib boramiz)
         if not stripped:
             continue
             
