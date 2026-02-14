@@ -311,21 +311,21 @@ AND is_deleted = FALSE
 HOMEOWNERS_WITHOUT_PROPERTY = """
 SELECT COUNT(DISTINCT u.id) as total
 FROM "user" u
-LEFT JOIN properties p ON u.id = p.user_id AND p.is_deleted = FALSE
+LEFT JOIN properties p ON u.id = p.user_id_id AND p.is_deleted = FALSE
 WHERE u.role = 'homeowner' AND u.is_deleted = FALSE AND p.id IS NULL
 """
 
 TENANTS_WITHOUT_REQUESTS = """
 SELECT COUNT(DISTINCT u.id) as total
 FROM "user" u
-LEFT JOIN property_rentalrequest r ON u.id = r.user_id AND r.is_deleted = FALSE
+LEFT JOIN property_rentalrequest r ON u.id = r.user_id_id AND r.is_deleted = FALSE
 WHERE u.role = 'tenant' AND u.is_deleted = FALSE AND r.id IS NULL
 """
 
 TENANTS_WITHOUT_REQUESTS_PREV = """
 SELECT COUNT(DISTINCT u.id) as total
 FROM "user" u
-LEFT JOIN property_rentalrequest r ON u.id = r.user_id AND r.is_deleted = FALSE AND r.created_at < CURRENT_DATE - INTERVAL '7 days'
+LEFT JOIN property_rentalrequest r ON u.id = r.user_id_id AND r.is_deleted = FALSE AND r.created_at < CURRENT_DATE - INTERVAL '7 days'
 WHERE u.role = 'tenant' AND u.is_deleted = FALSE AND u.date_joined < CURRENT_DATE - INTERVAL '7 days'
 AND r.id IS NULL
 """

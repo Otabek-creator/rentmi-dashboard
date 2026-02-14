@@ -654,5 +654,5 @@ elif page == "🔥 Firebase / Logs":
             user = auth.get_user_by_email("test@example.com") # Just a test call
             st.success("Connected to Firebase Auth!")
         except Exception as e:
-            st.warning(f"Connection check failed (expected if no test user): {e}")
+            st.warning(f"Firebase Auth check: {e}. (Normal behavior if Auth providers not configured or test user missing)")
 
