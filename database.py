@@ -58,14 +58,14 @@ def _put_conn(conn):
 # ======================== QUERY EXECUTION ========================
 
 @st.cache_data(ttl=300, show_spinner=False)
-def execute_query(_query, _params=None):
+def execute_query(query, params=None):
     """
     Cached SELECT so'rov — DataFrame qaytaradi.
     5 daqiqa keshlanadi (ttl=300).
     """
     conn = _get_conn()
     try:
-        df = pd.read_sql_query(_query, conn, params=_params)
+        df = pd.read_sql_query(query, conn, params=params)
         return df
     except Exception as e:
         st.error(f"❌ So'rov xatosi: {e}")
