@@ -13,14 +13,16 @@ load_dotenv()
 
 # ======================== DASHBOARD DATABASE ========================
 # Streamlit Cloud da st.secrets ishlatiladi, localda esa .env
+DB_CONFIG = None
 try:
     if "postgres" in st.secrets:
         DB_CONFIG = dict(st.secrets["postgres"])
         if "sslmode" not in DB_CONFIG:
             DB_CONFIG["sslmode"] = "require"
-    else:
-        raise KeyError("'postgres' not found")
-except (FileNotFoundError, KeyError):
+except Exception:
+    pass
+
+if DB_CONFIG is None:
     DB_CONFIG = {
         "dbname": os.getenv("DB_NAME", "rentme_analytics"),
         "user": os.getenv("DB_USER", "postgres"),
@@ -37,7 +39,7 @@ try:
         SOURCE_DB_CONFIG = dict(st.secrets["source_postgres"])
         if "sslmode" not in SOURCE_DB_CONFIG:
             SOURCE_DB_CONFIG["sslmode"] = "require"
-except (FileNotFoundError, KeyError):
+except Exception:
     pass
 
 # Fallback: .env dan o'qish (lokal ishlatish uchun)
@@ -53,15 +55,21 @@ if SOURCE_DB_CONFIG is None:
         }
 
 # ======================== FIREBASE ========================
-if "firebase" in st.secrets:
-    FIREBASE_CREDENTIALS = dict(st.secrets["firebase"])
-    FIREBASE_CREDENTIALS_PATH = None
-else:
-    FIREBASE_CREDENTIALS = None
+FIREBASE_CREDENTIALS = None
+try:
+    if "firebase" in st.secrets:
+        FIREBASE_CREDENTIALS = dict(st.secrets["firebase"])
+        FIREBASE_CREDENTIALS_PATH = None
+except Exception:
+    pass
+
+if FIREBASE_CREDENTIALS is None:
     FIREBASE_CREDENTIALS_PATH = os.getenv(
         "FIREBASE_CREDENTIALS_PATH",
         "../backend/apps/notification/data/firebase-adminsdk.json"
     )
+else:
+    FIREBASE_CREDENTIALS_PATH = None
 
 # ======================== FLAGS ========================
 # Production rejimda = source_postgres mavjud
