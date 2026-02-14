@@ -378,11 +378,12 @@ with tab1:
     section_header("📈 Kunlik Trendlar (Arizalar, Shartnomalar, Yangi Userlar)")
     df_trends = safe_query(queries.DAILY_TRENDS_CHART)
     if not df_trends.empty:
-        fig = px.line(df_trends, x="date", y=["requests", "contracts", "new_users"],
-                     color_discrete_map={"requests": "#6366f1", "contracts": "#10b981", "new_users": "#f59e0b"},
+        df_trends = df_trends.rename(columns={"date": "sana", "requests": "Arizalar", "contracts": "Shartnomalar", "new_users": "Yangi userlar"})
+        fig = px.line(df_trends, x="sana", y=["Arizalar", "Shartnomalar", "Yangi userlar"],
+                     color_discrete_map={"Arizalar": "#6366f1", "Shartnomalar": "#10b981", "Yangi userlar": "#f59e0b"},
                      markers=True)
         apply_plotly_theme(fig, 280)
-        fig.update_layout(legend_title_text="Ko'rsatkich")
+        fig.update_layout(legend_title_text="Ko'rsatkich", xaxis_title="Sana", yaxis_title="Soni")
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("Trend ma'lumotlari topilmadi")
@@ -494,30 +495,32 @@ with tab5:
         </div>
         """, unsafe_allow_html=True)
     else:
-        st.success("✅ Real Data: Google Analytics 4 Connected")
+        st.success("✅ Haqiqiy ma'lumot: Google Analytics 4 ulangan")
 
     data = analytics_service.get_dashboard_metrics(days=30)
     key = data["key_metrics"]
 
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
-        metric_card("👥", key["dau"], "DAU (Daily Active)")
+        metric_card("👥", key["dau"], "Kunlik faol foydalanuvchilar")
     with col2:
-        metric_card("📅", key["mau"], "MAU (Monthly Active)")
+        metric_card("📅", key["mau"], "Oylik faol foydalanuvchilar")
     with col3:
         sticky = int(key["dau"]/key["mau"]*100) if key["mau"] > 0 else 0
-        metric_card("🧲", f"{sticky}%", "Sticky Factor")
+        metric_card("🧲", f"{sticky}%", "Qaytish ko'rsatkichi")
     with col4:
         metric_card("⏱️", f"{int(key['avg_session_duration'])}s", "O'rtacha sessiya")
     with col5:
-        metric_card("🚪", f"{int(key['bounce_rate'])}%", "Bounce Rate")
+        metric_card("🚪", f"{int(key['bounce_rate'])}%", "Tark etish darajasi")
 
-    section_header("📈 Kunlik Faollik (Users vs Sessions)")
+    section_header("📈 Kunlik Faollik (Foydalanuvchilar va Sessiyalar)")
     df_trend = data["trends"]
     if not df_trend.empty:
-        fig = px.area(df_trend, x="date", y=["active_users", "sessions"],
+        df_trend = df_trend.rename(columns={"date": "sana", "active_users": "Faol foydalanuvchilar", "sessions": "Sessiyalar"})
+        fig = px.area(df_trend, x="sana", y=["Faol foydalanuvchilar", "Sessiyalar"],
                      color_discrete_sequence=["#6366f1", "#10b981"])
         apply_plotly_theme(fig, 250)
+        fig.update_layout(xaxis_title="Sana", yaxis_title="Soni")
         st.plotly_chart(fig, use_container_width=True)
 
     col_left, col_right = st.columns(2)
@@ -526,7 +529,9 @@ with tab5:
         section_header("📱 Qurilma turlari")
         df_dev = data["device_stats"]
         if not df_dev.empty:
-            fig = px.pie(df_dev, values="sessions", names="deviceCategory", hole=0.5,
+            device_labels = {"desktop": "Kompyuter", "mobile": "Telefon", "tablet": "Planshet"}
+            df_dev["Qurilma"] = df_dev["deviceCategory"].map(device_labels).fillna(df_dev["deviceCategory"])
+            fig = px.pie(df_dev, values="sessions", names="Qurilma", hole=0.5,
                         color_discrete_sequence=COLORS["chart"])
             apply_plotly_theme(fig)
             st.plotly_chart(fig, use_container_width=True)
