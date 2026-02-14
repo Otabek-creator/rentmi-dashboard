@@ -9,6 +9,7 @@ class AnalyticsService:
         self.use_mock = True
         self.property_id = None
         self.client = None
+        self.last_error = None
         
         # Check for secrets and library
         try:
@@ -54,12 +55,14 @@ class AnalyticsService:
         - device_stats: DataFrame [device_category, sessions]
         - top_pages: DataFrame [page_path, views]
         """
+        self.last_error = None
         if self.use_mock:
             return self._generate_mock_data(days)
         else:
             try:
                 return self._fetch_real_data(days)
             except Exception as e:
+                self.last_error = str(e)
                 print(f"❌ Error fetching GA4 data: {e}")
                 return self._generate_mock_data(days)
 

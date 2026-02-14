@@ -526,7 +526,11 @@ with tab5:
         </div>
         """, unsafe_allow_html=True)
     else:
-        st.success("✅ Haqiqiy ma'lumot: Google Analytics 4 ulangan")
+        if analytics_service.last_error:
+            st.error(f"❌ GA4 Xatolik: {analytics_service.last_error}")
+            st.warning("⚠️ Ma'lumotlarni olib bo'lmadi. Demo ma'lumotlar ko'rsatilmoqda.")
+        else:
+            st.success("✅ Haqiqiy ma'lumot: Google Analytics 4 ulangan")
 
     session_days = max(range_days, 1)
     data = analytics_service.get_dashboard_metrics(days=session_days)
