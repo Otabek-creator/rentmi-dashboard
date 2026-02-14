@@ -15,7 +15,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
 
-from database import execute_query, create_tables, clear_cache
+from database import execute_query, create_tables
 from firebase_service import get_firebase_summary
 import queries
 
@@ -371,8 +371,9 @@ PLOTLY_LAYOUT = dict(
 
 # ======================== HELPER FUNCTIONS ========================
 
+@st.cache_data(ttl=300, show_spinner=False)
 def safe_query(query):
-    """Xavfsiz so'rov — xatolik bo'lsa bo'sh DataFrame qaytaradi"""
+    """Xavfsiz so'rov — xatolik bo'lsa bo'sh DataFrame qaytaradi (5 daq cached)"""
     try:
         return execute_query(query)
     except Exception as e:
@@ -386,6 +387,12 @@ def get_scalar(query, default=0):
     if df.empty:
         return default
     return df.iloc[0, 0] or default
+
+
+def clear_all_cache():
+    """Barcha keshni tozalash"""
+    safe_query.clear()
+    st.cache_data.clear()
 
 
 def metric_card(icon, value, label):
@@ -498,7 +505,7 @@ with st.sidebar:
                 st.error(f"❌ Xatolik: {e}")
 
     if st.button("🗑️ Keshni tozalash"):
-        clear_cache()
+        clear_all_cache()
         st.success("✅ Kesh tozalandi!")
         st.rerun()
 
