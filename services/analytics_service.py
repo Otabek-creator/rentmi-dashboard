@@ -1,5 +1,6 @@
 import random
 import pandas as pd
+import json
 from datetime import datetime, timedelta
 import streamlit as st
 
@@ -11,33 +12,36 @@ class AnalyticsService:
         
         # Check for secrets and library
         try:
+            # 1. Try [google_analytics] with nested JSON (Old way)
             if "google_analytics" in st.secrets:
                 self.property_id = st.secrets["google_analytics"].get("property_id")
                 creds = st.secrets["google_analytics"].get("credentials_json")
-                
-                if self.property_id:
-                    # Try to import
-                    try:
-                        from google.analytics.data_v1beta import BetaAnalyticsDataClient
-                        from google.oauth2 import service_account
-                        import json
-                        
-                        # Initialize client
-                        if creds:
-                            # Handle if creds is already a dict or a json string
-                            if isinstance(creds, str):
-                                creds_dict = json.loads(creds)
-                            else:
-                                creds_dict = creds
-                                
-                            credentials = service_account.Credentials.from_service_account_info(creds_dict)
-                            self.client = BetaAnalyticsDataClient(credentials=credentials)
-                            self.use_mock = False
-                            # print("✅ GA4 Client initialized successfully!")
-                    except ImportError:
-                        print("⚠️ google-analytics-data library not found. Using mock data.")
-                    except Exception as e:
-                        print(f"⚠️ Error initializing GA4 client: {e}. Using mock data.")
+                if creds:
+                    if isinstance(creds, str):
+                        self.creds_dict = json.loads(creds)
+                    else:
+                        self.creds_dict = creds
+
+            # 2. Try [firebase] with flat structure (User's way)
+            elif "firebase" in st.secrets:
+                self.property_id = st.secrets["firebase"].get("property_id")
+                # Use the whole section as credentials dict
+                self.creds_dict = dict(st.secrets["firebase"])
+
+            if self.property_id and hasattr(self, 'creds_dict'):
+                # Try to import
+                try:
+                    from google.analytics.data_v1beta import BetaAnalyticsDataClient
+                    from google.oauth2 import service_account
+                    
+                    credentials = service_account.Credentials.from_service_account_info(self.creds_dict)
+                    self.client = BetaAnalyticsDataClient(credentials=credentials)
+                    self.use_mock = False
+                    # print("✅ GA4 Client initialized successfully!")
+                except ImportError:
+                    print("⚠️ google-analytics-data library not found. Using mock data.")
+                except Exception as e:
+                    print(f"⚠️ Error initializing GA4 client: {e}. Using mock data.")
         except Exception:
             # Secrets file might be missing or other env issues
             pass
