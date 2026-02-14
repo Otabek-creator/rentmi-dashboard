@@ -371,3 +371,106 @@ LEFT JOIN "user" u ON DATE(u.date_joined) = DATE(series.day) AND u.is_deleted = 
 GROUP BY series.day
 ORDER BY series.day
 """
+
+
+# ==================== DATE-FILTERED QUERIES ====================
+# Bu so'rovlar %s parametr sifatida (start_date, end_date) qabul qiladi
+# O'sish hisobi uchun oldingi davr ham hisoblanadi
+
+def users_in_range():
+    return """
+    SELECT COUNT(*) as total FROM "user"
+    WHERE date_joined >= %s AND date_joined <= %s AND is_deleted = FALSE
+    """
+
+def users_in_prev_range():
+    return """
+    SELECT COUNT(*) as total FROM "user"
+    WHERE date_joined >= %s AND date_joined < %s AND is_deleted = FALSE
+    """
+
+def requests_in_range():
+    return """
+    SELECT COUNT(*) as total FROM property_rentalrequest
+    WHERE created_at >= %s AND created_at <= %s AND is_deleted = FALSE
+    """
+
+def requests_in_prev_range():
+    return """
+    SELECT COUNT(*) as total FROM property_rentalrequest
+    WHERE created_at >= %s AND created_at < %s AND is_deleted = FALSE
+    """
+
+def contracts_in_range():
+    return """
+    SELECT COUNT(*) as total FROM contract
+    WHERE created_at >= %s AND created_at <= %s AND is_deleted = FALSE
+    """
+
+def contracts_in_prev_range():
+    return """
+    SELECT COUNT(*) as total FROM contract
+    WHERE created_at >= %s AND created_at < %s AND is_deleted = FALSE
+    """
+
+def properties_in_range():
+    return """
+    SELECT COUNT(*) as total FROM properties
+    WHERE created_at >= %s AND created_at <= %s AND is_deleted = FALSE
+    """
+
+def properties_in_prev_range():
+    return """
+    SELECT COUNT(*) as total FROM properties
+    WHERE created_at >= %s AND created_at < %s AND is_deleted = FALSE
+    """
+
+def daily_trends_in_range():
+    return """
+    SELECT
+        DATE(series.day) as date,
+        COUNT(DISTINCT r.id) as requests,
+        COUNT(DISTINCT c.id) as contracts,
+        COUNT(DISTINCT u.id) as new_users
+    FROM generate_series(%s::date, %s::date, '1 day'::interval) as series(day)
+    LEFT JOIN property_rentalrequest r ON DATE(r.created_at) = DATE(series.day) AND r.is_deleted = FALSE
+    LEFT JOIN contract c ON DATE(c.created_at) = DATE(series.day) AND c.is_deleted = FALSE
+    LEFT JOIN "user" u ON DATE(u.date_joined) = DATE(series.day) AND u.is_deleted = FALSE
+    GROUP BY series.day
+    ORDER BY series.day
+    """
+
+def revenue_in_range():
+    return """
+    SELECT COALESCE(SUM(price), 0) as total_revenue
+    FROM contract
+    WHERE status = 'approved' AND created_at >= %s AND created_at <= %s AND is_deleted = FALSE
+    """
+
+def revenue_in_prev_range():
+    return """
+    SELECT COALESCE(SUM(price), 0) as total_revenue
+    FROM contract
+    WHERE status = 'approved' AND created_at >= %s AND created_at < %s AND is_deleted = FALSE
+    """
+
+def homeowners_in_range():
+    return """
+    SELECT COUNT(*) as total FROM "user"
+    WHERE role = 'homeowner' AND date_joined >= %s AND date_joined <= %s AND is_deleted = FALSE
+    """
+
+def tenants_in_range():
+    return """
+    SELECT COUNT(*) as total FROM "user"
+    WHERE role = 'tenant' AND date_joined >= %s AND date_joined <= %s AND is_deleted = FALSE
+    """
+
+def requests_by_status_in_range():
+    return """
+    SELECT status, COUNT(*) as count
+    FROM property_rentalrequest
+    WHERE created_at >= %s AND created_at <= %s AND is_deleted = FALSE
+    GROUP BY status
+    """
+

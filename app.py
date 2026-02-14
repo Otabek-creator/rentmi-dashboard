@@ -5,13 +5,14 @@ Streamlit yordamida qurilgan professional analitik panel
 ✅ Performance: Query caching at app level
 ✅ Design: Modern top-tab navigation, light theme
 ✅ Analytics: GA4 Integration (Auto-switch Demo/Real)
+✅ Filter: Date range filtering with growth %
 """
 
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from database import execute_query
 from services.analytics_service import AnalyticsService
@@ -68,35 +69,6 @@ st.markdown("""
     }
     [data-testid="stSidebar"] { display: none !important; }
     [data-testid="collapsedControl"] { display: none !important; }
-
-    /* ===== MINI HEADER ===== */
-    .mini-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.8rem 0;
-        margin-bottom: 0.5rem;
-    }
-    .mini-header-left {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-    }
-    .mini-header-left h2 {
-        margin: 0;
-        font-size: 1.4rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #4f46e5, #7c3aed);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        letter-spacing: -0.5px;
-    }
-    .mini-header-right {
-        font-size: 0.8rem;
-        color: var(--text-muted);
-        font-weight: 500;
-    }
 
     /* ===== TOP TABS STYLING (STICKY NAVBAR) ===== */
     .stTabs {
@@ -215,6 +187,16 @@ st.markdown("""
         color: var(--demo-text) !important;
     }
 
+    /* ===== DATE FILTER ===== */
+    .date-filter-row .stDateInput > div {
+        border-radius: 10px;
+    }
+    .date-filter-row .stDateInput label {
+        font-size: 0.75rem !important;
+        font-weight: 600;
+        color: var(--text-muted) !important;
+    }
+
     /* ===== SCROLLBAR ===== */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #f1f5f9; }
@@ -256,21 +238,28 @@ PLOTLY_LAYOUT = dict(
 # ======================== HELPER FUNCTIONS ========================
 
 @st.cache_data(ttl=300, show_spinner=False)
-def safe_query(query):
+def safe_query(query, params=None):
     """Xavfsiz so'rov (5 daq cached)"""
     try:
-        return execute_query(query)
+        return execute_query(query, params)
     except Exception as e:
         st.error(f"❌ So'rov xatosi: {e}")
         return pd.DataFrame()
 
 
-def get_scalar(query, default=0):
+def get_scalar(query, default=0, params=None):
     """Bitta qiymat qaytaruvchi so'rov"""
-    df = safe_query(query)
+    df = safe_query(query, params)
     if df.empty:
         return default
     return df.iloc[0, 0] or default
+
+
+def calc_growth(current, previous):
+    """O'sish foizini hisoblash"""
+    if previous > 0:
+        return int((current - previous) / previous * 100)
+    return 0
 
 
 def metric_card(icon, value, label, delta=None):
@@ -287,7 +276,7 @@ def metric_card(icon, value, label, delta=None):
     if delta is not None:
         delta_class = "delta-up" if delta >= 0 else "delta-down"
         delta_sign = "+" if delta >= 0 else ""
-        delta_html = f'<span class="metric-delta {delta_class}">{delta_sign}{delta}% (o\'tgan oy)</span>'
+        delta_html = f'<span class="metric-delta {delta_class}">{delta_sign}{delta}% oldingi davrga nisbatan</span>'
 
     st.markdown(f"""
     <div class="metric-card">
@@ -330,6 +319,31 @@ STATUS_LABELS = {
 }
 
 
+# ======================== DATE FILTER ========================
+
+if "filter_start" not in st.session_state:
+    st.session_state.filter_start = datetime.now().date() - timedelta(days=30)
+if "filter_end" not in st.session_state:
+    st.session_state.filter_end = datetime.now().date()
+
+# Filter qator — chap tarafda bo'sh, o'ng tarafda sanalar
+fcol1, fcol2, fcol3 = st.columns([6, 2, 2])
+with fcol2:
+    start_date = st.date_input("📅 Boshlanish", value=st.session_state.filter_start, key="d_start")
+    st.session_state.filter_start = start_date
+with fcol3:
+    end_date = st.date_input("📅 Tugash", value=st.session_state.filter_end, key="d_end")
+    st.session_state.filter_end = end_date
+
+# Oldingi davr (xuddi shuncha kunlik)
+range_days = (end_date - start_date).days
+prev_start = start_date - timedelta(days=range_days + 1)
+prev_end = start_date - timedelta(days=1)
+
+date_params = (str(start_date), str(end_date))
+prev_params = (str(prev_start), str(prev_end))
+
+
 # ======================== TOP TAB NAVIGATION ========================
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -340,43 +354,52 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📈 Session Analytics",
 ])
 
-# Initialize Session Analytics Service
 analytics_service = AnalyticsService()
 
 
 # ==================== 1. UMUMIY ANALITIKA ====================
 with tab1:
+
+    cur_users = get_scalar(queries.users_in_range(), params=date_params)
+    cur_requests = get_scalar(queries.requests_in_range(), params=date_params)
+    cur_contracts = get_scalar(queries.contracts_in_range(), params=date_params)
+    cur_properties = get_scalar(queries.properties_in_range(), params=date_params)
+    total_active = get_scalar(queries.ACTIVE_USERS)
+
+    prev_users = get_scalar(queries.users_in_prev_range(), params=prev_params)
+    prev_requests = get_scalar(queries.requests_in_prev_range(), params=prev_params)
+    prev_contracts = get_scalar(queries.contracts_in_prev_range(), params=prev_params)
+    prev_properties = get_scalar(queries.properties_in_prev_range(), params=prev_params)
+
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
-        metric_card("👥", get_scalar(queries.TOTAL_USERS), "Jami foydalanuvchilar")
+        metric_card("👥", cur_users, "Yangi foydalanuvchilar", delta=calc_growth(cur_users, prev_users))
     with col2:
-        metric_card("📝", get_scalar(queries.TOTAL_REQUESTS), "Jami arizalar")
+        metric_card("📝", cur_requests, "Arizalar", delta=calc_growth(cur_requests, prev_requests))
     with col3:
-        metric_card("🤝", get_scalar(queries.TOTAL_CONTRACTS), "Shartnomalar")
+        metric_card("🤝", cur_contracts, "Shartnomalar", delta=calc_growth(cur_contracts, prev_contracts))
     with col4:
-        metric_card("🏘️", get_scalar(queries.TOTAL_PROPERTIES), "Jami Mulklar")
+        metric_card("🏘️", cur_properties, "Yangi Mulklar", delta=calc_growth(cur_properties, prev_properties))
     with col5:
-        metric_card("✅", get_scalar(queries.ACTIVE_USERS), "Faol Userlar (Online)")
+        metric_card("✅", total_active, "Faol Userlar (Online)")
 
     st.markdown("")
 
+    cur_revenue = get_scalar(queries.revenue_in_range(), params=date_params)
+    prev_revenue = get_scalar(queries.revenue_in_prev_range(), params=prev_params)
+
     col1, col2, col3 = st.columns(3)
     with col1:
-        avg_req = get_scalar(queries.DAILY_REQUESTS_AVG)
-        growth_req = get_scalar(queries.DAILY_REQUESTS_AVG_GROWTH)
-        metric_card("📅", f"{float(avg_req):.1f}", "O'rtacha kunlik arizalar", delta=int(growth_req))
-
+        metric_card("💰", f"{cur_revenue:,.0f}", "Shartnoma tushumi", delta=calc_growth(cur_revenue, prev_revenue))
     with col2:
-        new_users_week = get_scalar(queries.NEW_USERS_LAST_WEEK)
-        new_users_prev = get_scalar(queries.NEW_USERS_PREV_WEEK)
-        growth_users = ((new_users_week - new_users_prev) / new_users_prev * 100) if new_users_prev > 0 else 0
-        metric_card("🆕", new_users_week, "Yangi Userlar (7 kun)", delta=int(growth_users))
-
+        total_all_users = get_scalar(queries.TOTAL_USERS)
+        metric_card("📊", total_all_users, "Jami foydalanuvchilar (barchasi)")
     with col3:
-        metric_card("💰", f"{get_scalar(queries.CONTRACTS_REVENUE):,.0f}", "Shartnoma tushumi")
+        total_all_requests = get_scalar(queries.TOTAL_REQUESTS)
+        metric_card("📋", total_all_requests, "Jami arizalar (barchasi)")
 
     section_header("📈 Kunlik Trendlar (Arizalar, Shartnomalar, Yangi Userlar)")
-    df_trends = safe_query(queries.DAILY_TRENDS_CHART)
+    df_trends = safe_query(queries.daily_trends_in_range(), params=date_params)
     if not df_trends.empty:
         df_trends = df_trends.rename(columns={"date": "sana", "requests": "Arizalar", "contracts": "Shartnomalar", "new_users": "Yangi userlar"})
         fig = px.line(df_trends, x="sana", y=["Arizalar", "Shartnomalar", "Yangi userlar"],
@@ -437,17 +460,20 @@ with tab3:
     total_owners = get_scalar(queries.TOTAL_HOMEOWNERS)
     inactive_owners = get_scalar(queries.HOMEOWNERS_WITHOUT_PROPERTY)
     active_percent = 100 - (int(inactive_owners / total_owners * 100) if total_owners > 0 else 0)
+    cur_owners = get_scalar(queries.homeowners_in_range(), params=date_params)
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         metric_card("🏘️", total_owners, "Jami Uy Egalari")
     with col2:
-        metric_card("⚠️", inactive_owners, "Mulk qo'shmaganlar (Action needed!)")
+        metric_card("🆕", cur_owners, f"Yangi ({start_date} — {end_date})")
     with col3:
+        metric_card("⚠️", inactive_owners, "Mulk qo'shmaganlar")
+    with col4:
         metric_card("✅", f"{active_percent}%", "Faollik darajasi")
 
     if inactive_owners > 0:
-        st.warning(f"⚠️ **Diqqat:** {inactive_owners} ta uy egasi ro'yxatdan o'tgan lekin hali mulk qo'shmagan. Ularga notification yuborish tavsiya etiladi.")
+        st.warning(f"⚠️ **Diqqat:** {inactive_owners} ta uy egasi ro'yxatdan o'tgan lekin hali mulk qo'shmagan.")
 
     section_header("🏠 Mulklar holati")
     df = safe_query(queries.PROPERTIES_BY_STATUS)
@@ -464,30 +490,35 @@ with tab4:
 
     total_tenants = get_scalar(queries.TOTAL_TENANTS)
     no_requests = get_scalar(queries.TENANTS_WITHOUT_REQUESTS)
+    cur_tenants = get_scalar(queries.tenants_in_range(), params=date_params)
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         metric_card("🤝", total_tenants, "Jami Ijarachilar")
     with col2:
+        metric_card("🆕", cur_tenants, f"Yangi ({start_date} — {end_date})")
+    with col3:
         metric_card("😴", no_requests, "Ariza yubormaganlar")
 
-    st.info(f"💡 {no_requests} ta ijarachi ro'yxatdan o'tgan, lekin hali birorta ham ariza yubormagan. Ularni faollashtirish kerak.")
+    st.info(f"💡 {no_requests} ta ijarachi ro'yxatdan o'tgan, lekin hali birorta ham ariza yubormagan.")
 
-    section_header("📋 Arizalar statusi")
-    df = safe_query(queries.REQUESTS_BY_STATUS)
+    section_header("📋 Arizalar statusi (tanlangan davr)")
+    df = safe_query(queries.requests_by_status_in_range(), params=date_params)
     if not df.empty:
         df["status_label"] = df["status"].map(STATUS_LABELS).fillna(df["status"])
         fig = px.pie(df, values="count", names="status_label",
                     color="status", color_discrete_map=COLORS["status"], hole=0.4)
         apply_plotly_theme(fig)
         st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Tanlangan davrda arizalar topilmadi")
 
 
 # ==================== 5. SESSION ANALYTICS ====================
 with tab5:
 
     if analytics_service.use_mock:
-        st.markdown(f"""
+        st.markdown("""
         <div class="demo-box">
             <b>⚠️ DIQQAT: Demo Mode</b><br>
             Google Analytics 4 (GA4) ulanmaganligi sababli, quyidagi ma'lumotlar <b>DEMO (tasodifiy)</b> hisoblanadi.
@@ -497,7 +528,8 @@ with tab5:
     else:
         st.success("✅ Haqiqiy ma'lumot: Google Analytics 4 ulangan")
 
-    data = analytics_service.get_dashboard_metrics(days=30)
+    session_days = max(range_days, 1)
+    data = analytics_service.get_dashboard_metrics(days=session_days)
     key = data["key_metrics"]
 
     col1, col2, col3, col4, col5 = st.columns(5)
