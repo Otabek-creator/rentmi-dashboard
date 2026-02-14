@@ -381,7 +381,7 @@ with tab1:
         df_trends = df_trends.rename(columns={"date": "sana", "requests": "Arizalar", "contracts": "Shartnomalar", "new_users": "Yangi userlar"})
         fig = px.line(df_trends, x="sana", y=["Arizalar", "Shartnomalar", "Yangi userlar"],
                      color_discrete_map={"Arizalar": "#6366f1", "Shartnomalar": "#10b981", "Yangi userlar": "#f59e0b"},
-                     markers=True)
+                     markers=True, labels={"sana": "Sana", "value": "Qiymati", "variable": "Ko'rsatkich"})
         apply_plotly_theme(fig, 280)
         fig.update_layout(legend_title_text="Ko'rsatkich", xaxis_title="Sana", yaxis_title="Soni")
         st.plotly_chart(fig, use_container_width=True)
@@ -518,9 +518,10 @@ with tab5:
     if not df_trend.empty:
         df_trend = df_trend.rename(columns={"date": "sana", "active_users": "Faol foydalanuvchilar", "sessions": "Sessiyalar"})
         fig = px.area(df_trend, x="sana", y=["Faol foydalanuvchilar", "Sessiyalar"],
-                     color_discrete_sequence=["#6366f1", "#10b981"])
+                     color_discrete_sequence=["#6366f1", "#10b981"],
+                     labels={"sana": "Sana", "value": "Qiymati", "variable": "Ko'rsatkich"})
         apply_plotly_theme(fig, 250)
-        fig.update_layout(xaxis_title="Sana", yaxis_title="Soni")
+        fig.update_layout(xaxis_title="Sana", yaxis_title="Qiymati")
         st.plotly_chart(fig, use_container_width=True)
 
     col_left, col_right = st.columns(2)
