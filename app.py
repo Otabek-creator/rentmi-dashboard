@@ -13,8 +13,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
 
-from database import execute_query, create_tables
-from firebase_service import get_firebase_summary
+from database import execute_query
 from services.analytics_service import AnalyticsService
 import queries
 
@@ -393,37 +392,9 @@ with st.sidebar:
             "🏘️ Uy Egalari",
             "🤝 Ijarachilar",
             "📈 Session Analytics",
-            "🔥 Firebase / Logs",
         ],
         index=0,
     )
-
-    st.markdown("---")
-    st.markdown("### 🛠️ Admin Panel")
-
-    if st.button("🔄 Bazani yangilash"):
-        with st.spinner("Jadvallar yaratilmoqda..."):
-            try:
-                create_tables()
-                st.success("✅ Jadvallar yaratildi!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"❌ Xatolik: {e}")
-
-    if st.button("🎲 Demo ma'lumot qo'shish"):
-        with st.spinner("Demo ma'lumotlar qo'shilmoqda..."):
-            try:
-                from database import seed_demo_data
-                seed_demo_data()
-                st.success("✅ Demo ma'lumotlar qo'shildi!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"❌ Xatolik: {e}")
-
-    if st.button("🗑️ Keshni tozalash"):
-        clear_all_cache()
-        st.success("✅ Kesh tozalandi!")
-        st.rerun()
 
     st.markdown("---")
     st.markdown(f"📅 **{datetime.now().strftime('%Y-%m-%d %H:%M')}**")
@@ -641,18 +612,4 @@ elif page == "📈 Session Analytics":
         section_header("📄 Eng ko'p ko'rilgan sahifalar")
         df_pages = data["top_pages"]
         st.dataframe(df_pages, hide_index=True, use_container_width=True)
-
-# ==================== 6. FIREBASE / LOGS ====================
-elif page == "🔥 Firebase / Logs":
-    section_header("🔥 Firebase Integration Summary")
-    summary = get_firebase_summary()
-    st.json(summary)
-    
-    if st.button("Check Connectivity"):
-        try:
-            from firebase_admin import auth
-            user = auth.get_user_by_email("test@example.com") # Just a test call
-            st.success("Connected to Firebase Auth!")
-        except Exception as e:
-            st.warning(f"Firebase Auth check: {e}. (Normal behavior if Auth providers not configured or test user missing)")
 
