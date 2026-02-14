@@ -518,7 +518,11 @@ with tab4:
 with tab5:
 
     session_days = max(range_days, 1)
-    data = analytics_service.get_dashboard_metrics(days=session_days)
+    data = analytics_service.get_dashboard_metrics(
+        days=session_days,
+        start_date=st.session_state.filter_start,
+        end_date=st.session_state.filter_end
+    )
     key = data["key_metrics"]
 
     if analytics_service.use_mock:

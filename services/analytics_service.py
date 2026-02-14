@@ -47,24 +47,48 @@ class AnalyticsService:
             # Secrets file might be missing or other env issues
             pass
 
-    def get_dashboard_metrics(self, days=30):
+    def get_dashboard_metrics(self, start_date=None, end_date=None, days=30):
         """
-        Returns a dictionary with:
-        - key_metrics: { dau, mau, sessions, avg_duration, bounce_rate, ... }
-        - trends: DataFrame [date, active_users, sessions]
-        - device_stats: DataFrame [device_category, sessions]
-        - top_pages: DataFrame [page_path, views]
+        Returns a dictionary with metrics.
+        Accepts specific start_date/end_date (datetime or str) OR days (int).
         """
         self.last_error = None
+        
+        # Handle Date Logic
+        if start_date and end_date:
+            # Format to YYYY-MM-DD if needed
+            if isinstance(start_date, datetime) or hasattr(start_date, 'strftime'):
+                s_date = start_date.strftime("%Y-%m-%d")
+            else:
+                s_date = str(start_date)
+            
+            if isinstance(end_date, datetime) or hasattr(end_date, 'strftime'):
+                e_date = end_date.strftime("%Y-%m-%d")
+            else:
+                e_date = str(end_date)
+                
+            # Calculate days for mock generation fallback
+            try:
+                d1 = datetime.strptime(s_date, "%Y-%m-%d")
+                d2 = datetime.strptime(e_date, "%Y-%m-%d")
+                days_count = (d2 - d1).days + 1
+            except:
+                days_count = days
+        else:
+            # Fallback to relative days
+            s_date = f"{days}daysAgo"
+            e_date = "today"
+            days_count = days
+
         if self.use_mock:
-            return self._generate_mock_data(days)
+            return self._generate_mock_data(days_count)
         else:
             try:
-                return self._fetch_real_data(days)
+                return self._fetch_real_data(s_date, e_date)
             except Exception as e:
                 self.last_error = str(e)
                 print(f"❌ Error fetching GA4 data: {e}")
-                return self._generate_mock_data(days)
+                return self._generate_mock_data(days_count)
 
     def _generate_mock_data(self, days):
         """Generates realistic demo data."""
@@ -133,7 +157,7 @@ class AnalyticsService:
             "top_pages": pd.DataFrame(page_data)
         }
 
-    def _fetch_real_data(self, days):
+    def _fetch_real_data(self, start_date, end_date):
         """Fetches data from Google Analytics Data API."""
         from google.analytics.data_v1beta import BetaAnalyticsDataClient
         from google.analytics.data_v1beta.types import (
@@ -143,6 +167,9 @@ class AnalyticsService:
             RunReportRequest,
         )
 
+        # Common Date Range
+        dr = DateRange(start_date=start_date, end_date=end_date)
+
         request = RunReportRequest(
             property=f"properties/{self.property_id}",
             dimensions=[Dimension(name="date")],
@@ -150,7 +177,7 @@ class AnalyticsService:
                 Metric(name="activeUsers"),
                 Metric(name="sessions")
             ],
-            date_ranges=[DateRange(start_date=f"{days}daysAgo", end_date="today")],
+            date_ranges=[dr],
         )
         
         response = self.client.run_report(request)
@@ -177,37 +204,33 @@ class AnalyticsService:
             
         trend_df = pd.DataFrame(trend_data).sort_values('date')
         
-        # Parse Totals (Approximation for simple dashboard)
-        # For accurate DAU/MAU we need separate requests or aggregation
-        # Here we simplify: activeUsers over 30 days is MAU.
-        # Average of daily activeUsers is approx DAU.
-        
-        mau = total_users # Distinct users in date range (Actually sum of daily is WRONG for unique users. Need separate request for 30 day metric.)
-        # GA4 metric "activeUsers" with date dimension is DAILY active users.
-        # If we remove date dimension, we get Total Active Users (MAU).
-        
         # Request 2: Overview Metrics
         req_overview = RunReportRequest(
             property=f"properties/{self.property_id}",
             metrics=[
-                Metric(name="activeUsers"), # MAU
+                Metric(name="activeUsers"), # Total Users in period
                 Metric(name="sessions"),
                 Metric(name="averageSessionDuration"),
                 Metric(name="bounceRate"),
-                Metric(name="dauPerMau") # Engagement rate? No, user engagement. dau/mau is manual calc usually.
             ],
-            date_ranges=[DateRange(start_date=f"{days}daysAgo", end_date="today")]
+            date_ranges=[dr]
         )
         resp_overview = self.client.run_report(req_overview)
         
         overview_row = resp_overview.rows[0] if resp_overview.rows else None
         
+        # Helper safe extractor
+        def get_metric(idx, type_func=int):
+            if overview_row and len(overview_row.metric_values) > idx:
+                return type_func(overview_row.metric_values[idx].value)
+            return 0
+
         key_metrics = {
             "dau": int(trend_df['active_users'].mean()) if not trend_df.empty else 0, # Avg DAU
-            "mau": int(overview_row.metric_values[0].value) if overview_row else 0,
-            "sessions": int(overview_row.metric_values[1].value) if overview_row else 0,
-            "avg_session_duration": float(overview_row.metric_values[2].value) if overview_row else 0,
-            "bounce_rate": float(overview_row.metric_values[3].value) * 100 if overview_row else 0
+            "mau": get_metric(0),
+            "sessions": get_metric(1),
+            "avg_session_duration": get_metric(2, float),
+            "bounce_rate": get_metric(3, float) * 100
         }
 
         # Request 3: Device Categories
@@ -215,7 +238,7 @@ class AnalyticsService:
             property=f"properties/{self.property_id}",
             dimensions=[Dimension(name="deviceCategory")],
             metrics=[Metric(name="sessions")],
-            date_ranges=[DateRange(start_date=f"{days}daysAgo", end_date="today")]
+            date_ranges=[dr]
         )
         resp_device = self.client.run_report(req_device)
         device_data = []
@@ -233,7 +256,7 @@ class AnalyticsService:
                 Dimension(name="pageTitle") # screenName equivalent
             ],
             metrics=[Metric(name="screenPageViews")],
-            date_ranges=[DateRange(start_date=f"{days}daysAgo", end_date="today")],
+            date_ranges=[dr],
             limit=10
         )
         resp_pages = self.client.run_report(req_pages)
@@ -244,7 +267,7 @@ class AnalyticsService:
                 'screenName': row.dimension_values[1].value,
                 'screenPageViews': int(row.metric_values[0].value)
             })
-
+            
         return {
             "source": "ga4",
             "key_metrics": key_metrics,
