@@ -421,10 +421,8 @@ def section_header(text):
 
 def apply_plotly_theme(fig, height=350):
     """Plotly grafikga dark theme ni qo'llash"""
-    fig.update_layout(
-        **PLOTLY_LAYOUT,
-        height=height,
-    )
+    layout = {**PLOTLY_LAYOUT, "height": height}
+    fig.update_layout(**layout)
     return fig
 
 
