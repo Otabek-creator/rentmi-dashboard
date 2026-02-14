@@ -325,20 +325,6 @@ STATUS_LABELS = {
 }
 
 
-# ======================== MINI HEADER ========================
-
-st.markdown(f"""
-<div class="mini-header">
-    <div class="mini-header-left">
-        <h2>🏠 2RentMe Analytics</h2>
-    </div>
-    <div class="mini-header-right">
-        📅 {datetime.now().strftime('%Y-%m-%d %H:%M')}
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-
 # ======================== TOP TAB NAVIGATION ========================
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
