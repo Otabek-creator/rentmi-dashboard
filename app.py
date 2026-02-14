@@ -517,6 +517,10 @@ with tab4:
 # ==================== 5. SESSION ANALYTICS ====================
 with tab5:
 
+    session_days = max(range_days, 1)
+    data = analytics_service.get_dashboard_metrics(days=session_days)
+    key = data["key_metrics"]
+
     if analytics_service.use_mock:
         st.markdown("""
         <div class="demo-box">
@@ -531,10 +535,6 @@ with tab5:
             st.warning("⚠️ Ma'lumotlarni olib bo'lmadi. Demo ma'lumotlar ko'rsatilmoqda.")
         else:
             st.success("✅ Haqiqiy ma'lumot: Google Analytics 4 ulangan")
-
-    session_days = max(range_days, 1)
-    data = analytics_service.get_dashboard_metrics(days=session_days)
-    key = data["key_metrics"]
 
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
