@@ -202,7 +202,10 @@ class AnalyticsService:
             total_users += users
             total_sessions += sessions
             
-        trend_df = pd.DataFrame(trend_data).sort_values('date')
+        if not trend_data:
+            trend_df = pd.DataFrame(columns=['date', 'active_users', 'sessions'])
+        else:
+            trend_df = pd.DataFrame(trend_data).sort_values('date')
         
         # Request 2: Overview Metrics
         req_overview = RunReportRequest(
