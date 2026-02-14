@@ -147,58 +147,58 @@ st.markdown("""
         display: none !important;
     }
 
-    /* ===== METRIC CARDS ===== */
+    /* ===== METRIC CARDS (COMPACT) ===== */
     .metric-card {
         background: var(--bg-card);
         border: 1px solid var(--border-color);
-        padding: 1.5rem 1.2rem;
-        border-radius: 16px;
+        padding: 0.8rem 0.8rem;
+        border-radius: 12px;
         text-align: center;
         box-shadow: var(--shadow-card);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.25s ease;
         position: relative;
         overflow: hidden;
     }
     .metric-card::before {
         content: '';
         position: absolute; top: 0; left: 0; right: 0;
-        height: 3px;
+        height: 2px;
         background: linear-gradient(90deg, #6366f1, #8b5cf6, #a78bfa);
-        border-radius: 16px 16px 0 0;
+        border-radius: 12px 12px 0 0;
     }
     .metric-card:hover {
-        transform: translateY(-4px);
+        transform: translateY(-2px);
         box-shadow: var(--shadow-hover);
         border-color: var(--border-hover);
     }
-    .metric-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .metric-icon { font-size: 1.3rem; margin-bottom: 0.2rem; }
     .metric-value {
-        font-size: 2.4rem; font-weight: 800;
+        font-size: 1.5rem; font-weight: 800;
         color: var(--metric-value-color) !important;
         line-height: 1.1; letter-spacing: -0.5px;
     }
     .metric-delta {
-        font-size: 0.9rem; font-weight: 600;
-        margin-top: 0.2rem; display: block;
+        font-size: 0.7rem; font-weight: 600;
+        margin-top: 0.1rem; display: block;
     }
     .delta-up { color: #10b981; }
     .delta-down { color: #ef4444; }
     .metric-label {
-        font-size: 0.8rem; color: var(--text-muted) !important;
-        margin-top: 0.5rem; font-weight: 500;
-        text-transform: uppercase; letter-spacing: 0.5px;
+        font-size: 0.65rem; color: var(--text-muted) !important;
+        margin-top: 0.3rem; font-weight: 500;
+        text-transform: uppercase; letter-spacing: 0.3px;
     }
 
-    /* ===== SECTION HEADERS ===== */
+    /* ===== SECTION HEADERS (COMPACT) ===== */
     .section-header {
-        font-size: 1.2rem; font-weight: 700;
+        font-size: 0.95rem; font-weight: 700;
         color: var(--text-primary) !important;
-        margin: 2rem 0 1rem 0;
-        padding: 0.8rem 1.2rem;
-        border-left: 4px solid;
+        margin: 1rem 0 0.6rem 0;
+        padding: 0.5rem 0.8rem;
+        border-left: 3px solid;
         border-image: linear-gradient(180deg, #6366f1, #8b5cf6) 1;
         background: var(--section-bg);
-        border-radius: 0 12px 12px 0;
+        border-radius: 0 8px 8px 0;
         letter-spacing: -0.3px;
     }
 
@@ -248,7 +248,7 @@ PLOTLY_LAYOUT = dict(
     xaxis=dict(showgrid=False, color="#475569"),
     yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.06)", color="#475569"),
     margin=dict(l=0, r=0, t=30, b=0),
-    height=350,
+    height=250,
     legend=dict(font=dict(color="#475569"), bgcolor="rgba(0,0,0,0)"),
 )
 
@@ -304,7 +304,7 @@ def section_header(text):
     st.markdown(f'<div class="section-header">{text}</div>', unsafe_allow_html=True)
 
 
-def apply_plotly_theme(fig, height=350):
+def apply_plotly_theme(fig, height=250):
     """Plotly grafikga theme qo'llash"""
     layout = {**PLOTLY_LAYOUT, "height": height}
     fig.update_layout(**layout)
@@ -381,7 +381,7 @@ with tab1:
         fig = px.line(df_trends, x="date", y=["requests", "contracts", "new_users"],
                      color_discrete_map={"requests": "#6366f1", "contracts": "#10b981", "new_users": "#f59e0b"},
                      markers=True)
-        apply_plotly_theme(fig, 400)
+        apply_plotly_theme(fig, 280)
         fig.update_layout(legend_title_text="Ko'rsatkich")
         st.plotly_chart(fig, use_container_width=True)
     else:
@@ -517,7 +517,7 @@ with tab5:
     if not df_trend.empty:
         fig = px.area(df_trend, x="date", y=["active_users", "sessions"],
                      color_discrete_sequence=["#6366f1", "#10b981"])
-        apply_plotly_theme(fig, 350)
+        apply_plotly_theme(fig, 250)
         st.plotly_chart(fig, use_container_width=True)
 
     col_left, col_right = st.columns(2)
