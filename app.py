@@ -14,6 +14,7 @@ from datetime import datetime
 
 from database import execute_query, create_tables
 from firebase_service import get_firebase_summary
+from config import IS_PRODUCTION
 import queries
 
 # ======================== PAGE CONFIG ========================
@@ -446,12 +447,23 @@ with st.sidebar:
         st.session_state.theme = "light" if IS_DARK else "dark"
         st.rerun()
 
-    st.markdown("""
-    <div class="demo-box">
-        <b>⚠️ DEMO REJIM</b><br>
-        <span style="font-size: 0.8rem;">Ma'lumotlar sun'iy (demo)</span>
-    </div>
-    """, unsafe_allow_html=True)
+    # Data mode indicator
+    if IS_PRODUCTION:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(5,150,105,0.08));
+                    border: 1px solid rgba(16,185,129,0.3); padding: 0.8rem 1rem;
+                    border-radius: 12px; margin-bottom: 1rem; text-align: center;">
+            <b style="color: #059669;">🟢 PRODUCTION</b><br>
+            <span style="font-size: 0.8rem; color: #059669;">Real ma'lumotlar</span>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div class="demo-box">
+            <b>⚠️ DEMO REJIM</b><br>
+            <span style="font-size: 0.8rem;">Ma'lumotlar sun'iy (demo)</span>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -473,24 +485,45 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🛠️ Admin Panel")
 
-    if st.button("🔄 Bazani yangilash"):
-        with st.spinner("Jadvallar yaratilmoqda..."):
-            try:
-                create_tables()
-                st.success("✅ Jadvallar yaratildi!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"❌ Xatolik: {e}")
+    # Production: Sinxronlash tugmasi
+    if IS_PRODUCTION:
+        if st.button("🔄 Ma'lumotni sinxronlash", use_container_width=True):
+            with st.spinner("Production → Dashboard sinxronlash..."):
+                try:
+                    from etl import sync_data
+                    result = sync_data()
+                    if "error" in result:
+                        st.error(f"❌ {result['error']}")
+                    else:
+                        clear_all_cache()
+                        total = sum(result.values())
+                        st.success(f"✅ {total} ta yozuv sinxronlandi!")
+                        with st.expander("📋 Batafsil"):
+                            for table, count in result.items():
+                                st.write(f"**{table}:** {count}")
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Xatolik: {e}")
+    else:
+        # Demo: Jadval + demo data tugmalari
+        if st.button("🔄 Bazani yangilash"):
+            with st.spinner("Jadvallar yaratilmoqda..."):
+                try:
+                    create_tables()
+                    st.success("✅ Jadvallar yaratildi!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Xatolik: {e}")
 
-    if st.button("🎲 Demo ma'lumot qo'shish"):
-        with st.spinner("Demo ma'lumotlar qo'shilmoqda..."):
-            try:
-                from database import seed_demo_data
-                seed_demo_data()
-                st.success("✅ Demo ma'lumotlar qo'shildi!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"❌ Xatolik: {e}")
+        if st.button("🎲 Demo ma'lumot qo'shish"):
+            with st.spinner("Demo ma'lumotlar qo'shilmoqda..."):
+                try:
+                    from database import seed_demo_data
+                    seed_demo_data()
+                    st.success("✅ Demo ma'lumotlar qo'shildi!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Xatolik: {e}")
 
     if st.button("🗑️ Keshni tozalash"):
         clear_all_cache()

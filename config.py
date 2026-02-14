@@ -1,23 +1,26 @@
+"""
+config.py — Dashboard va Production bazalar konfiguratsiyasi
+
+Dashboard DB:  st.secrets["postgres"]     → Neon.tech (dashboard o'qiydi)
+Source DB:     st.secrets["source_postgres"] → Production (ETL o'qiydi)
+"""
+
 import os
 import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Database Configuration
+# ======================== DASHBOARD DATABASE ========================
 # Streamlit Cloud da st.secrets ishlatiladi, localda esa .env
 try:
     if "postgres" in st.secrets:
         DB_CONFIG = dict(st.secrets["postgres"])
-        # Neon.tech uchun SSL talab qilinishi mumkin
         if "sslmode" not in DB_CONFIG:
             DB_CONFIG["sslmode"] = "require"
     else:
-        # Debugging: Agar secrets o'qilmasa, nimaga o'qilmayotganini bilish uchun
-        print(f"⚠️ 'postgres' section not found in st.secrets. Available keys: {list(st.secrets.keys())}")
         raise KeyError("'postgres' not found")
 except (FileNotFoundError, KeyError):
-    # Fallback to local
     DB_CONFIG = {
         "dbname": os.getenv("DB_NAME", "rentme_analytics"),
         "user": os.getenv("DB_USER", "postgres"),
@@ -26,21 +29,40 @@ except (FileNotFoundError, KeyError):
         "port": os.getenv("DB_PORT", "5432"),
     }
 
-# Firebase credentials
-# Streamlit Cloud da st.secrets["firebase"] ishlatiladi
+# ======================== SOURCE (PRODUCTION) DATABASE ========================
+# ETL uchun — production bazadan ma'lumot olish
+SOURCE_DB_CONFIG = None
+try:
+    if "source_postgres" in st.secrets:
+        SOURCE_DB_CONFIG = dict(st.secrets["source_postgres"])
+        if "sslmode" not in SOURCE_DB_CONFIG:
+            SOURCE_DB_CONFIG["sslmode"] = "require"
+except (FileNotFoundError, KeyError):
+    pass
+
+# Fallback: .env dan o'qish (lokal ishlatish uchun)
+if SOURCE_DB_CONFIG is None:
+    _src_host = os.getenv("SOURCE_DB_HOST")
+    if _src_host:
+        SOURCE_DB_CONFIG = {
+            "dbname": os.getenv("SOURCE_DB_NAME", "rentme_production"),
+            "user": os.getenv("SOURCE_DB_USER", "postgres"),
+            "password": os.getenv("SOURCE_DB_PASSWORD", ""),
+            "host": _src_host,
+            "port": os.getenv("SOURCE_DB_PORT", "5432"),
+        }
+
+# ======================== FIREBASE ========================
 if "firebase" in st.secrets:
     FIREBASE_CREDENTIALS = dict(st.secrets["firebase"])
-    FIREBASE_CREDENTIALS_PATH = None # Fayl yo'li kerak emas
+    FIREBASE_CREDENTIALS_PATH = None
 else:
     FIREBASE_CREDENTIALS = None
     FIREBASE_CREDENTIALS_PATH = os.getenv(
         "FIREBASE_CREDENTIALS_PATH",
-        "../backend/apps/notification/data/firebase-adminsdk.json" # Local path
+        "../backend/apps/notification/data/firebase-adminsdk.json"
     )
 
-# SQLAlchemy connection string (agar kerak bo'lsa)
-DATABASE_URL = (
-    f"postgresql://{DB_CONFIG['user']}:{DB_CONFIG['password']}"
-    f"@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['dbname']}"
-)
-
+# ======================== FLAGS ========================
+# Production rejimda = source_postgres mavjud
+IS_PRODUCTION = SOURCE_DB_CONFIG is not None
