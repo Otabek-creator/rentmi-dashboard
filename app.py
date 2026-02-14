@@ -98,14 +98,19 @@ st.markdown("""
         font-weight: 500;
     }
 
-    /* ===== TOP TABS STYLING ===== */
+    /* ===== TOP TABS STYLING (STICKY NAVBAR) ===== */
     .stTabs {
-        background: var(--bg-secondary);
-        border-radius: 16px;
-        padding: 0.3rem 0.5rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-        border: 1px solid var(--border-color);
-        margin-bottom: 1.5rem;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-radius: 0;
+        padding: 0.4rem 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        border-bottom: 1px solid var(--border-color);
+        margin: -1rem -1rem 1.5rem -1rem;
+        position: sticky;
+        top: 0;
+        z-index: 999;
     }
     .stTabs [data-baseweb="tab-list"] {
         gap: 4px;
