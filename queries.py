@@ -275,3 +275,99 @@ AVERAGE_RATING = """
 SELECT ROUND(AVG(rating)::numeric, 2) as avg_rating
 FROM comment WHERE is_deleted = FALSE AND rating IS NOT NULL
 """
+
+# ==================== ADVANCED ANALYTICS (NEW) ====================
+
+# 1. User Breakdown
+TOTAL_TENANTS = """
+SELECT COUNT(*) as total FROM "user" WHERE role = 'tenant' AND is_deleted = FALSE
+"""
+
+TOTAL_HOMEOWNERS = """
+SELECT COUNT(*) as total FROM "user" WHERE role = 'homeowner' AND is_deleted = FALSE
+"""
+
+IDENTIFIED_USERS_COUNT = """
+SELECT COUNT(*) as total FROM "user" WHERE is_identified = TRUE AND is_deleted = FALSE
+"""
+
+SCORED_USERS_COUNT = """
+SELECT COUNT(*) as total FROM "user" WHERE has_score = TRUE AND is_deleted = FALSE
+"""
+
+NEW_USERS_LAST_WEEK = """
+SELECT COUNT(*) as total FROM "user"
+WHERE date_joined >= CURRENT_DATE - INTERVAL '7 days' AND is_deleted = FALSE
+"""
+
+NEW_USERS_PREV_WEEK = """
+SELECT COUNT(*) as total FROM "user"
+WHERE date_joined >= CURRENT_DATE - INTERVAL '14 days' 
+AND date_joined < CURRENT_DATE - INTERVAL '7 days'
+AND is_deleted = FALSE
+"""
+
+# 2. Growth Gaps (Targeting)
+HOMEOWNERS_WITHOUT_PROPERTY = """
+SELECT COUNT(DISTINCT u.id) as total
+FROM "user" u
+LEFT JOIN properties p ON u.id = p.user_id AND p.is_deleted = FALSE
+WHERE u.role = 'homeowner' AND u.is_deleted = FALSE AND p.id IS NULL
+"""
+
+TENANTS_WITHOUT_REQUESTS = """
+SELECT COUNT(DISTINCT u.id) as total
+FROM "user" u
+LEFT JOIN property_rentalrequest r ON u.id = r.user_id AND r.is_deleted = FALSE
+WHERE u.role = 'tenant' AND u.is_deleted = FALSE AND r.id IS NULL
+"""
+
+TENANTS_WITHOUT_REQUESTS_PREV = """
+SELECT COUNT(DISTINCT u.id) as total
+FROM "user" u
+LEFT JOIN property_rentalrequest r ON u.id = r.user_id AND r.is_deleted = FALSE AND r.created_at < CURRENT_DATE - INTERVAL '7 days'
+WHERE u.role = 'tenant' AND u.is_deleted = FALSE AND u.date_joined < CURRENT_DATE - INTERVAL '7 days'
+AND r.id IS NULL
+"""
+
+# 3. Engagement
+DAILY_REQUESTS_AVG = """
+SELECT COUNT(*) / NULLIF(COUNT(DISTINCT DATE(created_at)), 0) as avg_daily
+FROM property_rentalrequest WHERE is_deleted = FALSE
+"""
+
+DAILY_REQUESTS_AVG_GROWTH = """
+WITH current_period AS (
+    SELECT COUNT(*) as cnt, COUNT(DISTINCT DATE(created_at)) as days
+    FROM property_rentalrequest 
+    WHERE created_at >= CURRENT_DATE - INTERVAL '30 days' AND is_deleted = FALSE
+),
+prev_period AS (
+    SELECT COUNT(*) as cnt, COUNT(DISTINCT DATE(created_at)) as days
+    FROM property_rentalrequest 
+    WHERE created_at >= CURRENT_DATE - INTERVAL '60 days' 
+    AND created_at < CURRENT_DATE - INTERVAL '30 days' AND is_deleted = FALSE
+)
+SELECT 
+    CASE WHEN prev_period.days > 0 AND prev_period.cnt > 0 
+         THEN ((current_period.cnt::numeric / NULLIF(current_period.days, 0)) - (prev_period.cnt::numeric / NULLIF(prev_period.days, 0))) 
+              / (prev_period.cnt::numeric / NULLIF(prev_period.days, 0)) * 100
+         ELSE 0 
+    END as growth_pct
+FROM current_period, prev_period
+"""
+
+# 4. Charts Data
+DAILY_TRENDS_CHART = """
+SELECT
+    DATE(series.day) as date,
+    COUNT(DISTINCT r.id) as requests,
+    COUNT(DISTINCT c.id) as contracts,
+    COUNT(DISTINCT u.id) as new_users
+FROM generate_series(CURRENT_DATE - INTERVAL '30 days', CURRENT_DATE, '1 day'::interval) as series(day)
+LEFT JOIN property_rentalrequest r ON DATE(r.created_at) = DATE(series.day) AND r.is_deleted = FALSE
+LEFT JOIN contract c ON DATE(c.created_at) = DATE(series.day) AND c.is_deleted = FALSE
+LEFT JOIN "user" u ON DATE(u.date_joined) = DATE(series.day) AND u.is_deleted = FALSE
+GROUP BY series.day
+ORDER BY series.day
+"""
