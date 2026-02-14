@@ -311,7 +311,7 @@ AND is_deleted = FALSE
 HOMEOWNERS_WITHOUT_PROPERTY = """
 SELECT COUNT(DISTINCT u.id) as total
 FROM "user" u
-LEFT JOIN properties p ON u.id = p.user_id_id AND p.is_deleted = FALSE
+LEFT JOIN properties p ON u.id = p.user_id AND p.is_deleted = FALSE
 WHERE u.role = 'homeowner' AND u.is_deleted = FALSE AND p.id IS NULL
 """
 
